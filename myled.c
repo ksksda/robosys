@@ -4,7 +4,7 @@
 #include <linux/device.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
-#include <linux/delay.h>
+#include <asm/delay.h>
 
 MODULE_AUTHOR("Kyosuke SUDA");
 MODULE_DESCRIPTION("driver for LED control");
@@ -18,20 +18,20 @@ static volatile u32 *gpio_base = NULL;
 
 static ssize_t led_write(struct file* filp, const char* buf, size_t count, loff_t* pos){
 	char c;
+    int duty = -1, i;
 	if(copy_from_user(&c,buf,sizeof(char)))
 	return -EFAULT;
     
-    int duty = -1;
-    if (c == 'L')c = 0;
-    else if(c == 'H')c = 10;
+    if (c == 'L')duty = 0;
+    else if(c == 'H')duty = 10;
     else if('1' <= c && c <= '9')duty = c - '0';
-    
-    if(c>=0){
-        for(int i=0; i<100; i++){
-            gpio_base[7] = 1 << 25;
-            msleep((unsigned int)(duty));
-            gpio_base[10] = 1 << 25;
-            msleep((unsigned int)(10-duty));
+
+    if(duty>-1){
+        for(i=0; i<100000; i++){
+            if(duty>0)gpio_base[7] = 1 << 25;
+            udelay((unsigned int)(duty));
+            if(10-duty>0)gpio_base[10] = 1 << 25;
+            udelay((unsigned int)(10-duty));
         }
     }
     
