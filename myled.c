@@ -20,16 +20,21 @@ static ssize_t led_write(struct file* filp, const char* buf, size_t count, loff_
 	char c;
 	if(copy_from_user(&c,buf,sizeof(char)))
 	return -EFAULT;
-	if('0' <= c && c <= '9'){
-		int duty = c - '0';
-		for(int i=0; i<50; i++){
-			gpio_base[7] = 1 << 25;
-			msleep((unsigned int)(duty*10));
-			gpio_base[10] = 1 << 25;
-			msleep((unsigned int)((10-duty)*10));
-		}
-	}
-	
+    
+    int duty = -1;
+    if (c == 'L')c = 0;
+    else if(c == 'H')c = 10;
+    else if('1' <= c && c <= '9')duty = c - '0';
+    
+    if(c>=0){
+        for(int i=0; i<100; i++){
+            gpio_base[7] = 1 << 25;
+            msleep((unsigned int)(duty));
+            gpio_base[10] = 1 << 25;
+            msleep((unsigned int)(10-duty));
+        }
+    }
+    
 	printk(KERN_INFO "recive:%c\n",c);
 	gpio_base[10] = 1 << 25;
 	return 1;
@@ -75,7 +80,7 @@ static int __init init_mod(void){
 		printk(KERN_ERR "cdev_add failed. major:%d, minor:%d",MAJOR(dev),MINOR(dev));
 		return retval;
 	}
-	cls = class_create(THIS_MODULE,"myled");	 
+	cls = class_create(THIS_MODULE,"myled");
 	if(IS_ERR(cls)){
 		printk(KERN_ERR "class_create failed.");
 		return PTR_ERR(cls);
